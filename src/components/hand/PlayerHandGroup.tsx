@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import { PlayerHand, HandTotal } from '@/engine/types';
 import { Hand } from './Hand';
 import { HandOutcomeLabel } from './HandOutcomeLabel';
@@ -13,13 +14,15 @@ interface PlayerHandGroupProps {
   showOutcome?: boolean;
 }
 
-function formatTotal(total: HandTotal, hideResult?: boolean): string {
-  if (!hideResult) {
-    if (total.isBlackjack) return 'BJ';
-    if (total.isBust) return 'BUST';
-  }
+function numericTotal(total: HandTotal): string {
   if (total.isSoft && total.best < 21) return `${total.best}`;
   return `${total.best}`;
+}
+
+function resultText(total: HandTotal): string | null {
+  if (total.isBlackjack) return 'BJ';
+  if (total.isBust) return 'BUST';
+  return null;
 }
 
 export function PlayerHandGroup({
@@ -30,8 +33,44 @@ export function PlayerHandGroup({
   animateEntry = false,
   showOutcome,
 }: PlayerHandGroupProps) {
-  // Hide bust/BJ text until outcome is ready to display
-  const hideResult = showOutcome === false;
+  const currentNumeric = numericTotal(total);
+  const currentResult = resultText(total);
+
+  // Delay total display until card animation settles
+  const [displayTotal, setDisplayTotal] = useState(currentNumeric);
+  const [displayResult, setDisplayResult] = useState<string | null>(currentResult);
+  const prevCardCount = useRef(hand.cards.length);
+
+  useEffect(() => {
+    const cardAdded = hand.cards.length > prevCardCount.current;
+    prevCardCount.current = hand.cards.length;
+
+    if (cardAdded) {
+      // Hide result while new card settles
+      setDisplayResult(null);
+
+      // Delay numeric total by 1.2s (0.7s card animation + 0.5s pause)
+      const totalTimer = setTimeout(() => setDisplayTotal(currentNumeric), 1200);
+
+      // Delay result text (BUST/BJ) by 2.2s (total + 1.0s)
+      const resultTimer = currentResult
+        ? setTimeout(() => setDisplayResult(currentResult), 2200)
+        : undefined;
+
+      return () => {
+        clearTimeout(totalTimer);
+        if (resultTimer) clearTimeout(resultTimer);
+      };
+    }
+
+    // No card added — update immediately
+    setDisplayTotal(currentNumeric);
+    setDisplayResult(currentResult);
+  }, [currentNumeric, currentResult, hand.cards.length]);
+
+  const shownText = displayResult ?? displayTotal;
+  const isBust = displayResult === 'BUST';
+  const isBJ = displayResult === 'BJ';
 
   return (
     <div className={`flex flex-col items-center gap-1 transition-all duration-200 ${
@@ -40,10 +79,10 @@ export function PlayerHandGroup({
       {/* Hand total */}
       <span
         className={`text-sm md:text-base font-bold ${
-          !hideResult && total.isBust ? 'text-error' : !hideResult && total.isBlackjack ? 'text-accent' : 'text-foreground'
+          isBust ? 'text-error' : isBJ ? 'text-accent' : 'text-foreground'
         }`}
       >
-        {formatTotal(total, hideResult)}
+        {shownText}
       </span>
 
       {/* Cards */}

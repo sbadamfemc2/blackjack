@@ -42,11 +42,9 @@ export function DealerHand({ hand, total, dealBaseDelay = 0, animateEntry = fals
     if (cardAdded || holeRevealed) {
       let delayMs: number;
       if (holeRevealed && !cardAdded) {
-        delayMs = 500; // match flip animation duration
+        delayMs = 1000; // 0.5s flip animation + 0.5s pause
       } else {
-        // match entry stagger delay + animation duration
-        const lastIndex = hand.cards.length - 1;
-        delayMs = lastIndex * 150 + 400;
+        delayMs = 1200; // 0.7s card animation + 0.5s pause
       }
       const timer = setTimeout(() => setDisplayTotal(currentTotal), delayMs);
       return () => clearTimeout(timer);

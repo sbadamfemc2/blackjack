@@ -36,8 +36,6 @@ export function GameTable() {
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
   const [outcomeVisible, setOutcomeVisible] = useState(false);
   const prevHandCountRef = useRef(0);
-  const prevPhaseForOutcomeRef = useRef<string>('');
-
   // Track when cards are newly dealt to trigger entry animations
   useEffect(() => {
     if (!state) return;
@@ -61,25 +59,13 @@ export function GameTable() {
     if (!state) return;
 
     if (state.phase === 'ROUND_OVER' && !isAnimating) {
-      const fromDealerPlay = prevPhaseForOutcomeRef.current === 'DEALER_PLAY';
-
-      let delayMs: number;
-      if (fromDealerPlay) {
-        // Dealer played — cards arrive one-at-a-time with 800ms pacing,
-        // so only need to wait for the final card/flip animation to finish
-        delayMs = 1200;
-      } else {
-        // Player bust/blackjack or instant resolution (e.g. dealer BJ)
-        delayMs = 1200;
-      }
-
-      const timer = setTimeout(() => setOutcomeVisible(true), delayMs);
+      // Wait for final total to update (1.2s) + 1.0s processing pause
+      const timer = setTimeout(() => setOutcomeVisible(true), 2200);
       return () => clearTimeout(timer);
     }
 
     if (state.phase !== 'ROUND_OVER') {
       setOutcomeVisible(false);
-      prevPhaseForOutcomeRef.current = state.phase;
     }
   }, [state?.phase, isAnimating]);
 
@@ -87,9 +73,14 @@ export function GameTable() {
   useEffect(() => {
     if (!state || state.phase !== 'DEALER_PLAY') return;
 
+    // First entry: wait for player's last card animation + total to settle
+    // Subsequent dispatches: regular pacing between dealer cards
+    const isFirstEntry = !state.dealerHand.holeCardRevealed;
+    const delayMs = isFirstEntry ? 2000 : 800;
+
     const timer = setTimeout(() => {
       dispatch({ type: 'DEALER_PLAY' });
-    }, 800);
+    }, delayMs);
     return () => clearTimeout(timer);
   }, [state?.phase, state?.dealerHand.cards.length, state?.dealerHand.holeCardRevealed, dispatch]);
 
