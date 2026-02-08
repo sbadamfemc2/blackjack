@@ -30,7 +30,7 @@ import {
 // Helper: create initial empty player hand
 // ============================================================
 
-function createEmptyPlayerHand(bet: number = 0): PlayerHand {
+function createEmptyPlayerHand(bet: number = 0, splitOrigin: number = 0): PlayerHand {
   return {
     cards: [],
     bet,
@@ -41,6 +41,7 @@ function createEmptyPlayerHand(bet: number = 0): PlayerHand {
     isStood: false,
     outcome: null,
     payout: 0,
+    splitOrigin,
   };
 }
 
@@ -105,12 +106,14 @@ export function getAvailableActions(state: GameState): PlayerAction[] {
     actions.push('double');
   }
 
-  // Split: available on first 2 cards of same value, if can afford and under max splits
-  const totalPlayerHands = state.playerHands.length;
+  // Split: available on first 2 cards of same value, if can afford and under max splits per origin
+  const handsFromSameOrigin = state.playerHands.filter(
+    h => h.splitOrigin === hand.splitOrigin
+  ).length;
   if (
     hand.cards.length === 2 &&
     canSplit(hand.cards) &&
-    totalPlayerHands < GAME_CONFIG.MAX_SPLITS &&
+    handsFromSameOrigin < GAME_CONFIG.MAX_SPLITS &&
     canAffordSplit(hand.bet, state.chips)
   ) {
     actions.push('split');
@@ -240,8 +243,8 @@ function handleDeal(state: GameState, deck: DeckManager): GameState {
   const totalBets = state.bets.reduce((sum, b) => sum + b, 0);
   let chips = state.chips - totalBets;
 
-  // Create player hands with bets
-  const playerHands: PlayerHand[] = state.bets.map(bet => createEmptyPlayerHand(bet));
+  // Create player hands with bets (each tracks its original bet position)
+  const playerHands: PlayerHand[] = state.bets.map((bet, i) => createEmptyPlayerHand(bet, i));
 
   // Create dealer hand
   const dealerHand = createEmptyDealerHand();
@@ -414,16 +417,16 @@ function handleSplit(state: GameState, deck: DeckManager): GameState {
   const available = getAvailableActions(state);
   if (!available.includes('split')) return state;
 
-  // Create two new hands from the split
+  // Create two new hands from the split (inherit splitOrigin from parent)
   const hand1: PlayerHand = {
-    ...createEmptyPlayerHand(hand.bet),
+    ...createEmptyPlayerHand(hand.bet, hand.splitOrigin),
     cards: [hand.cards[0], deck.deal()],
     isSplit: true,
     actions: ['split'],
   };
 
   const hand2: PlayerHand = {
-    ...createEmptyPlayerHand(hand.bet),
+    ...createEmptyPlayerHand(hand.bet, hand.splitOrigin),
     cards: [hand.cards[1], deck.deal()],
     isSplit: true,
     actions: ['split'],
