@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { GAME_CONFIG } from '@/engine/types';
 import { ActiveSessionData } from '@/hooks/useGame';
 import { useAuth } from '@/hooks/useAuth';
+import { useBalance } from '@/hooks/useBalance';
+import { BalanceDisplay } from '@/components/ui/BalanceDisplay';
 import Link from 'next/link';
 
 interface SessionSetupProps {
@@ -17,6 +19,7 @@ export function SessionSetup({ onStart, activeSession, onResume }: SessionSetupP
   const [buyIn, setBuyIn] = useState(1000);
   const [hands, setHands] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
   const { user } = useAuth();
+  const { balance, loading: balanceLoading } = useBalance(user?.id ?? null);
 
   return (
     <div className="h-dvh flex items-center justify-center bg-background px-4">
@@ -28,9 +31,16 @@ export function SessionSetup({ onStart, activeSession, onResume }: SessionSetupP
         <h1 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-1">
           Blackjack
         </h1>
-        <p className="text-foreground/40 text-center text-sm mb-8">
+        <p className="text-foreground/40 text-center text-sm mb-2">
           Vegas rules, 6-deck shoe
         </p>
+
+        {/* Balance display for authenticated users */}
+        {user && (
+          <div className="text-center mb-6">
+            <BalanceDisplay balance={balance} loading={balanceLoading} size="md" />
+          </div>
+        )}
 
         {/* Resume session */}
         {activeSession && (
@@ -103,6 +113,36 @@ export function SessionSetup({ onStart, activeSession, onResume }: SessionSetupP
         >
           {activeSession ? 'New Session' : 'Start Playing'}
         </motion.button>
+
+        {/* Multiplayer section */}
+        <div className="mt-8 pt-6 border-t border-foreground/10">
+          <p className="text-foreground/50 text-xs font-semibold uppercase tracking-wider mb-3 text-center">
+            Multiplayer
+          </p>
+          {user ? (
+            <div className="grid grid-cols-2 gap-3">
+              <Link
+                href="/room/create"
+                className="h-11 rounded-lg bg-foreground/10 text-foreground/70 font-semibold text-sm hover:bg-foreground/20 transition-colors flex items-center justify-center focus-ring"
+              >
+                Create Room
+              </Link>
+              <Link
+                href="/room/join"
+                className="h-11 rounded-lg bg-foreground/10 text-foreground/70 font-semibold text-sm hover:bg-foreground/20 transition-colors flex items-center justify-center focus-ring"
+              >
+                Join Room
+              </Link>
+            </div>
+          ) : (
+            <p className="text-foreground/30 text-xs text-center">
+              <Link href="/login" className="text-accent hover:text-accent-hover transition-colors">
+                Sign in
+              </Link>
+              {' '}to play multiplayer
+            </p>
+          )}
+        </div>
 
         {/* Auth / Stats links */}
         <div className="mt-6 text-center flex items-center justify-center gap-4">

@@ -103,6 +103,17 @@ export function useGame(userId: string | null): UseGameReturn {
       // Create session in database if authenticated
       if (userId) {
         const supabase = createClient();
+
+        // Debit buy-in from persistent balance
+        supabase
+          .rpc('debit_balance', {
+            p_user_id: userId,
+            p_amount: chips,
+            p_type: 'session_buy_in',
+            p_ref_id: sessionId,
+          })
+          .then(); // fire-and-forget
+
         supabase
           .from('game_sessions')
           .insert({
@@ -211,6 +222,18 @@ export function useGame(userId: string | null): UseGameReturn {
     if (!userId || !state) return;
 
     const supabase = createClient();
+
+    // Credit remaining chips back to persistent balance
+    if (state.chips > 0) {
+      await supabase
+        .rpc('credit_balance', {
+          p_user_id: userId,
+          p_amount: state.chips,
+          p_type: 'session_cashout',
+          p_ref_id: state.sessionId,
+        });
+    }
+
     await supabase
       .from('game_sessions')
       .update({
