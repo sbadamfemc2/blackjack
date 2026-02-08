@@ -35,7 +35,6 @@ export function GameTable() {
   const [animateCards, setAnimateCards] = useState(false);
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
   const [outcomeVisible, setOutcomeVisible] = useState(false);
-  const prevPhaseRef = useRef<string | null>(null);
   const prevHandCountRef = useRef(0);
   const prevPhaseForOutcomeRef = useRef<string>('');
 
@@ -66,12 +65,9 @@ export function GameTable() {
 
       let delayMs: number;
       if (fromDealerPlay) {
-        // Dealer played — wait for dealer card animations + processing pause
-        const dealerCards = state.dealerHand.cards.length;
-        const lastCardAnimEnd = dealerCards > 2
-          ? (dealerCards - 1) * 150 + 400  // stagger delay + entry animation
-          : 500;                            // hole card flip only
-        delayMs = lastCardAnimEnd + 1000;
+        // Dealer played — cards arrive one-at-a-time with 800ms pacing,
+        // so only need to wait for the final card/flip animation to finish
+        delayMs = 1200;
       } else {
         // Player bust/blackjack or instant resolution (e.g. dealer BJ)
         delayMs = 1200;
@@ -87,20 +83,15 @@ export function GameTable() {
     }
   }, [state?.phase, isAnimating]);
 
-  // Auto-progression: handle DEALER_PLAY automatically
+  // Auto-progression: handle DEALER_PLAY one step at a time
   useEffect(() => {
-    if (!state) return;
+    if (!state || state.phase !== 'DEALER_PLAY') return;
 
-    if (state.phase === 'DEALER_PLAY' && prevPhaseRef.current !== 'DEALER_PLAY') {
-      const timer = setTimeout(() => {
-        dispatch({ type: 'DEALER_PLAY' });
-      }, 800);
-      prevPhaseRef.current = state.phase;
-      return () => clearTimeout(timer);
-    }
-
-    prevPhaseRef.current = state.phase;
-  }, [state?.phase, dispatch]);
+    const timer = setTimeout(() => {
+      dispatch({ type: 'DEALER_PLAY' });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [state?.phase, state?.dealerHand.cards.length, state?.dealerHand.holeCardRevealed, dispatch]);
 
   // Keyboard shortcuts
   useEffect(() => {
