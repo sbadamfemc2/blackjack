@@ -69,7 +69,7 @@ export function DealerHand({ hand, total, dealBaseDelay = 0, animateEntry = fals
       {hand.cards.length > 0 && (
         <span
           className={`text-sm md:text-base font-bold mt-0.5 ${
-            total?.isBust ? 'text-error' : total?.isBlackjack ? 'text-accent' : 'text-foreground'
+            displayTotal === 'BUST' ? 'text-error' : displayTotal === 'BJ' ? 'text-accent' : 'text-foreground'
           }`}
         >
           {displayTotal}

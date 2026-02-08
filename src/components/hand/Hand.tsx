@@ -30,7 +30,7 @@ export function Hand({
             <Card
               card={card}
               faceDown={faceDownIndices?.has(i) ?? false}
-              delay={dealBaseDelay + i * 0.15}
+              delay={i < 2 ? dealBaseDelay + i * 0.15 : 0}
               animateEntry={animateEntry}
             />
           </div>

@@ -35,7 +35,9 @@ export function GameTable() {
   const [animateCards, setAnimateCards] = useState(false);
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
   const [outcomeVisible, setOutcomeVisible] = useState(false);
+  const [cardSettling, setCardSettling] = useState(false);
   const prevHandCountRef = useRef(0);
+  const prevCardCountsRef = useRef<number[]>([]);
   // Track when cards are newly dealt to trigger entry animations
   useEffect(() => {
     if (!state) return;
@@ -53,6 +55,25 @@ export function GameTable() {
     }
     prevHandCountRef.current = currentHandCount;
   }, [state?.playerHands.length]);
+
+  // Block actions while a gameplay card settles (hit/double/split)
+  useEffect(() => {
+    if (!state || state.phase !== 'PLAYER_ACTION') {
+      prevCardCountsRef.current = state?.playerHands.map(h => h.cards.length) ?? [];
+      return;
+    }
+
+    const currentCounts = state.playerHands.map(h => h.cards.length);
+    const prevCounts = prevCardCountsRef.current;
+    const cardAdded = currentCounts.some((count, i) => count > (prevCounts[i] ?? 0));
+    prevCardCountsRef.current = currentCounts;
+
+    if (cardAdded) {
+      setCardSettling(true);
+      const timer = setTimeout(() => setCardSettling(false), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [state?.phase, state?.playerHands]);
 
   // Delay outcome labels so the player can see the final card before the result
   useEffect(() => {
@@ -86,7 +107,7 @@ export function GameTable() {
 
   // Keyboard shortcuts
   useEffect(() => {
-    if (!state || state.phase !== 'PLAYER_ACTION' || isAnimating) return;
+    if (!state || state.phase !== 'PLAYER_ACTION' || isAnimating || cardSettling) return;
 
     const keyMap: Record<string, string> = {
       h: 'HIT',
@@ -116,7 +137,7 @@ export function GameTable() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state?.phase, availableActions, isAnimating, dispatch]);
+  }, [state?.phase, availableActions, isAnimating, cardSettling, dispatch]);
 
   // Auto-save session and record hands at ROUND_OVER
   const savedHandRef = useRef(0);
@@ -217,7 +238,7 @@ export function GameTable() {
             availableActions={availableActions}
             previousBets={previousBets}
             dispatch={dispatch}
-            isAnimating={isAnimating}
+            isAnimating={isAnimating || cardSettling}
             selectedDenom={selectedDenom}
             onSelectDenom={setSelectedDenom}
           />
