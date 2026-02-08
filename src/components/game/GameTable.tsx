@@ -34,8 +34,9 @@ export function GameTable() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [animateCards, setAnimateCards] = useState(false);
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
-  const prevPhaseRef = useRef<string | null>(null);
+  const [outcomeVisible, setOutcomeVisible] = useState(false);
   const prevHandCountRef = useRef(0);
+  const prevPhaseForOutcomeRef = useRef<string>('');
 
   // Track when cards are newly dealt to trigger entry animations
   useEffect(() => {
@@ -55,20 +56,42 @@ export function GameTable() {
     prevHandCountRef.current = currentHandCount;
   }, [state?.playerHands.length]);
 
-  // Auto-progression: handle DEALER_PLAY automatically
+  // Delay outcome labels so the player can see the final card before the result
   useEffect(() => {
     if (!state) return;
 
-    if (state.phase === 'DEALER_PLAY' && prevPhaseRef.current !== 'DEALER_PLAY') {
-      const timer = setTimeout(() => {
-        dispatch({ type: 'DEALER_PLAY' });
-      }, 800);
-      prevPhaseRef.current = state.phase;
+    if (state.phase === 'ROUND_OVER' && !isAnimating) {
+      const fromDealerPlay = prevPhaseForOutcomeRef.current === 'DEALER_PLAY';
+
+      let delayMs: number;
+      if (fromDealerPlay) {
+        // Dealer played — cards arrive one-at-a-time with 800ms pacing,
+        // so only need to wait for the final card/flip animation to finish
+        delayMs = 1200;
+      } else {
+        // Player bust/blackjack or instant resolution (e.g. dealer BJ)
+        delayMs = 1200;
+      }
+
+      const timer = setTimeout(() => setOutcomeVisible(true), delayMs);
       return () => clearTimeout(timer);
     }
 
-    prevPhaseRef.current = state.phase;
-  }, [state?.phase, dispatch]);
+    if (state.phase !== 'ROUND_OVER') {
+      setOutcomeVisible(false);
+      prevPhaseForOutcomeRef.current = state.phase;
+    }
+  }, [state?.phase, isAnimating]);
+
+  // Auto-progression: handle DEALER_PLAY one step at a time
+  useEffect(() => {
+    if (!state || state.phase !== 'DEALER_PLAY') return;
+
+    const timer = setTimeout(() => {
+      dispatch({ type: 'DEALER_PLAY' });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [state?.phase, state?.dealerHand.cards.length, state?.dealerHand.holeCardRevealed, dispatch]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -190,6 +213,7 @@ export function GameTable() {
                 handsConfiguration={state.handsConfiguration}
                 onBetCircleClick={handleBetCircleClick}
                 animateEntry={animateCards}
+                outcomeVisible={outcomeVisible}
               />
             </div>
           </div>

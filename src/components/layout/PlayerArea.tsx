@@ -13,6 +13,7 @@ interface PlayerAreaProps {
   handsConfiguration: number;
   onBetCircleClick: (handIndex: number) => void;
   animateEntry?: boolean;
+  outcomeVisible?: boolean;
 }
 
 export function PlayerArea({
@@ -24,6 +25,7 @@ export function PlayerArea({
   handsConfiguration,
   onBetCircleClick,
   animateEntry = false,
+  outcomeVisible,
 }: PlayerAreaProps) {
   // During betting phase, show betting circles
   if (phase === 'BETTING') {
@@ -69,6 +71,7 @@ export function PlayerArea({
           }
           dealBaseDelay={i * 0.3}
           animateEntry={animateEntry}
+          showOutcome={outcomeVisible}
         />
       ))}
     </div>

@@ -561,24 +561,38 @@ function handleDeclineEvenMoney(state: GameState): GameState {
 function handleDealerPlay(state: GameState, deck: DeckManager): GameState {
   if (state.phase !== 'DEALER_PLAY') return state;
 
-  const dealerCards = [...state.dealerHand.cards];
+  // Step 1: Reveal hole card first
+  if (!state.dealerHand.holeCardRevealed) {
+    const revealed: GameState = {
+      ...state,
+      dealerHand: { ...state.dealerHand, holeCardRevealed: true },
+    };
 
-  // Dealer hits until standing (hits soft 17)
-  while (shouldDealerHit(dealerCards)) {
-    dealerCards.push(deck.deal());
+    // If dealer should hit, stay in DEALER_PLAY for next dispatch
+    if (shouldDealerHit(revealed.dealerHand.cards)) {
+      return revealed;
+    }
+
+    // Dealer stands — resolve
+    return handleResolve({ ...revealed, phase: 'RESOLUTION' });
   }
 
-  const newState: GameState = {
+  // Step 2+: Draw one card per dispatch
+  const newCard = deck.deal();
+  const dealerCards = [...state.dealerHand.cards, newCard];
+  const updated: GameState = {
     ...state,
-    phase: 'RESOLUTION',
-    dealerHand: {
-      cards: dealerCards,
-      holeCardRevealed: true,
-    },
+    dealerHand: { cards: dealerCards, holeCardRevealed: true },
     needsReshuffle: deck.needsReshuffle(),
   };
 
-  return handleResolve(newState);
+  // If dealer should keep hitting, stay in DEALER_PLAY
+  if (shouldDealerHit(dealerCards)) {
+    return updated;
+  }
+
+  // Dealer done — resolve
+  return handleResolve({ ...updated, phase: 'RESOLUTION' });
 }
 
 function handleResolve(state: GameState): GameState {

@@ -79,6 +79,17 @@ function setupDealtGame(
   return { state, deck };
 }
 
+/**
+ * Repeatedly dispatch DEALER_PLAY until the phase leaves DEALER_PLAY.
+ * Mirrors the one-card-at-a-time reducer behaviour.
+ */
+function dealerPlaysOut(state: GameState, deck: DeckManager): GameState {
+  while (state.phase === 'DEALER_PLAY') {
+    state = gameReducer(state, { type: 'DEALER_PLAY' }, deck);
+  }
+  return state;
+}
+
 // ============================================================
 // Tests
 // ============================================================
@@ -222,7 +233,7 @@ describe('Player blackjack scenarios', () => {
     expect(state.phase).toBe('DEALER_PLAY');
 
     // Dealer plays
-    const resolved = gameReducer(state, { type: 'DEALER_PLAY' }, deck);
+    const resolved = dealerPlaysOut(state, deck);
     expect(resolved.phase).toBe('ROUND_OVER');
     expect(resolved.playerHands[0].outcome).toBe('blackjack');
     expect(resolved.playerHands[0].payout).toBe(150); // 3:2 on $100
@@ -285,7 +296,7 @@ describe('Even money', () => {
     // Dealer doesn't have BJ (A+9=20), so player BJ stands, go to dealer play
     expect(declined.phase).toBe('DEALER_PLAY');
 
-    declined = gameReducer(declined, { type: 'DEALER_PLAY' }, deck);
+    declined = dealerPlaysOut(declined, deck);
     expect(declined.playerHands[0].outcome).toBe('blackjack');
     expect(declined.playerHands[0].payout).toBe(150);
   });
@@ -638,7 +649,7 @@ describe('Dealer play', () => {
     let result = gameReducer(state, { type: 'STAND' }, deck);
     expect(result.phase).toBe('DEALER_PLAY');
 
-    result = gameReducer(result, { type: 'DEALER_PLAY' }, deck);
+    result = dealerPlaysOut(result, deck);
     expect(result.dealerHand.cards).toHaveLength(3); // hit once
     expect(result.dealerHand.holeCardRevealed).toBe(true);
   });
@@ -650,7 +661,7 @@ describe('Dealer play', () => {
     );
 
     let result = gameReducer(state, { type: 'STAND' }, deck);
-    result = gameReducer(result, { type: 'DEALER_PLAY' }, deck);
+    result = dealerPlaysOut(result, deck);
     expect(result.dealerHand.cards).toHaveLength(2); // no hits
   });
 
@@ -664,7 +675,7 @@ describe('Dealer play', () => {
     );
 
     let result = gameReducer(state, { type: 'STAND' }, deck);
-    result = gameReducer(result, { type: 'DEALER_PLAY' }, deck);
+    result = dealerPlaysOut(result, deck);
 
     expect(result.phase).toBe('ROUND_OVER');
     expect(result.playerHands[0].outcome).toBe('win');
@@ -682,7 +693,7 @@ describe('Hand resolution', () => {
     );
 
     let result = gameReducer(state, { type: 'STAND' }, deck);
-    result = gameReducer(result, { type: 'DEALER_PLAY' }, deck);
+    result = dealerPlaysOut(result, deck);
 
     expect(result.playerHands[0].outcome).toBe('win');
     expect(result.playerHands[0].payout).toBe(100);
@@ -698,7 +709,7 @@ describe('Hand resolution', () => {
     );
 
     let result = gameReducer(state, { type: 'STAND' }, deck);
-    result = gameReducer(result, { type: 'DEALER_PLAY' }, deck);
+    result = dealerPlaysOut(result, deck);
 
     expect(result.playerHands[0].outcome).toBe('loss');
     expect(result.playerHands[0].payout).toBe(-100);
@@ -714,7 +725,7 @@ describe('Hand resolution', () => {
     );
 
     let result = gameReducer(state, { type: 'STAND' }, deck);
-    result = gameReducer(result, { type: 'DEALER_PLAY' }, deck);
+    result = dealerPlaysOut(result, deck);
 
     expect(result.playerHands[0].outcome).toBe('push');
     expect(result.playerHands[0].payout).toBe(0);
@@ -736,7 +747,7 @@ describe('Hand resolution', () => {
     result = gameReducer(result, { type: 'HIT' }, deck);
 
     // Dealer plays (hand 1 is alive)
-    result = gameReducer(result, { type: 'DEALER_PLAY' }, deck);
+    result = dealerPlaysOut(result, deck);
 
     expect(result.playerHands[0].outcome).toBe('win');
     expect(result.playerHands[1].outcome).toBe('loss');
@@ -754,7 +765,7 @@ describe('Hand resolution', () => {
 
     // Double down: 5+6=11, get 10 -> 21
     let result = gameReducer(state, { type: 'DOUBLE_DOWN' }, deck);
-    result = gameReducer(result, { type: 'DEALER_PLAY' }, deck);
+    result = dealerPlaysOut(result, deck);
 
     expect(result.playerHands[0].bet).toBe(200);
     expect(result.playerHands[0].outcome).toBe('win');
@@ -773,7 +784,7 @@ describe('New round', () => {
     );
 
     let result = gameReducer(state, { type: 'STAND' }, deck);
-    result = gameReducer(result, { type: 'DEALER_PLAY' }, deck);
+    result = dealerPlaysOut(result, deck);
     expect(result.phase).toBe('ROUND_OVER');
 
     result = gameReducer(result, { type: 'NEW_ROUND' }, deck);
@@ -793,7 +804,7 @@ describe('New round', () => {
     );
 
     let result = gameReducer(state, { type: 'STAND' }, deck);
-    result = gameReducer(result, { type: 'DEALER_PLAY' }, deck);
+    result = dealerPlaysOut(result, deck);
     const chipsAfterRound = result.chips;
     const handNumber = result.handNumber;
 
@@ -812,7 +823,7 @@ describe('New round', () => {
 
     // Stand, lose
     let result = gameReducer(state, { type: 'STAND' }, deck);
-    result = gameReducer(result, { type: 'DEALER_PLAY' }, deck);
+    result = dealerPlaysOut(result, deck);
     expect(result.chips).toBe(0);
 
     // Try new round - should stay in ROUND_OVER
@@ -942,7 +953,7 @@ describe('Edge cases', () => {
 
     // Hit hand 2 to 21
     let result = gameReducer(state, { type: 'HIT' }, deck);
-    result = gameReducer(result, { type: 'DEALER_PLAY' }, deck);
+    result = dealerPlaysOut(result, deck);
 
     expect(result.playerHands[0].outcome).toBe('blackjack');
     expect(result.playerHands[0].payout).toBe(150); // 3:2

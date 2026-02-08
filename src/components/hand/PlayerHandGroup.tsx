@@ -10,11 +10,14 @@ interface PlayerHandGroupProps {
   isActive: boolean;
   dealBaseDelay?: number;
   animateEntry?: boolean;
+  showOutcome?: boolean;
 }
 
-function formatTotal(total: HandTotal): string {
-  if (total.isBlackjack) return 'BJ';
-  if (total.isBust) return 'BUST';
+function formatTotal(total: HandTotal, hideResult?: boolean): string {
+  if (!hideResult) {
+    if (total.isBlackjack) return 'BJ';
+    if (total.isBust) return 'BUST';
+  }
   if (total.isSoft && total.best < 21) return `${total.best}`;
   return `${total.best}`;
 }
@@ -25,7 +28,11 @@ export function PlayerHandGroup({
   isActive,
   dealBaseDelay = 0,
   animateEntry = false,
+  showOutcome,
 }: PlayerHandGroupProps) {
+  // Hide bust/BJ text until outcome is ready to display
+  const hideResult = showOutcome === false;
+
   return (
     <div className={`flex flex-col items-center gap-1 transition-all duration-200 ${
       isActive ? 'scale-105' : 'scale-100 opacity-80'
@@ -33,10 +40,10 @@ export function PlayerHandGroup({
       {/* Hand total */}
       <span
         className={`text-sm md:text-base font-bold ${
-          total.isBust ? 'text-error' : total.isBlackjack ? 'text-accent' : 'text-foreground'
+          !hideResult && total.isBust ? 'text-error' : !hideResult && total.isBlackjack ? 'text-accent' : 'text-foreground'
         }`}
       >
-        {formatTotal(total)}
+        {formatTotal(total, hideResult)}
       </span>
 
       {/* Cards */}
@@ -54,8 +61,8 @@ export function PlayerHandGroup({
         ${hand.bet}
       </span>
 
-      {/* Outcome label */}
-      {hand.outcome && (
+      {/* Outcome label — delayed via showOutcome to let the player see the final card first */}
+      {hand.outcome && showOutcome !== false && (
         <HandOutcomeLabel outcome={hand.outcome} payout={hand.payout} />
       )}
     </div>

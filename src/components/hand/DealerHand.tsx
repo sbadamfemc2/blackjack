@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import { DealerHand as DealerHandType, HandTotal } from '@/engine/types';
 import { getCardValue } from '@/engine/hand';
 import { Hand } from './Hand';
@@ -24,10 +25,37 @@ function formatTotal(hand: DealerHandType, total: HandTotal | null): string {
 }
 
 export function DealerHand({ hand, total, dealBaseDelay = 0, animateEntry = false }: DealerHandProps) {
-  if (hand.cards.length === 0) return null;
-
   const faceDownIndices = hand.holeCardRevealed ? undefined : new Set([1]);
-  const displayTotal = formatTotal(hand, total);
+  const currentTotal = formatTotal(hand, total);
+
+  // Delay score display until card animation settles
+  const [displayTotal, setDisplayTotal] = useState(currentTotal);
+  const prevState = useRef({ cardCount: hand.cards.length, holeRevealed: hand.holeCardRevealed });
+
+  useEffect(() => {
+    const prev = prevState.current;
+    const cardAdded = hand.cards.length > prev.cardCount;
+    const holeRevealed = hand.holeCardRevealed && !prev.holeRevealed;
+
+    prevState.current = { cardCount: hand.cards.length, holeRevealed: hand.holeCardRevealed };
+
+    if (cardAdded || holeRevealed) {
+      let delayMs: number;
+      if (holeRevealed && !cardAdded) {
+        delayMs = 500; // match flip animation duration
+      } else {
+        // match entry stagger delay + animation duration
+        const lastIndex = hand.cards.length - 1;
+        delayMs = lastIndex * 150 + 400;
+      }
+      const timer = setTimeout(() => setDisplayTotal(currentTotal), delayMs);
+      return () => clearTimeout(timer);
+    }
+
+    setDisplayTotal(currentTotal);
+  }, [currentTotal, hand.cards.length, hand.holeCardRevealed]);
+
+  if (hand.cards.length === 0) return null;
 
   return (
     <div className="flex flex-col items-center gap-1">
