@@ -47,6 +47,7 @@ export interface PlayerHand {
   isStood: boolean; // has the player stood on this hand?
   outcome: HandOutcome | null; // null until resolved
   payout: number; // net change (positive = win, negative = loss)
+  splitOrigin: number; // which original bet position this hand came from
 }
 
 export interface DealerHand {
