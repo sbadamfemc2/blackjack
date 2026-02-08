@@ -1,6 +1,8 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
+import { useBalance } from '@/hooks/useBalance';
+import { BalanceDisplay } from '@/components/ui/BalanceDisplay';
 
 interface TopBarProps {
   chips: number;
@@ -11,6 +13,7 @@ interface TopBarProps {
 
 export function TopBar({ chips, handNumber, buyInAmount, onEndSession }: TopBarProps) {
   const { user, signOut } = useAuth();
+  const { balance, loading: balanceLoading } = useBalance(user?.id ?? null);
   const net = chips - buyInAmount;
   const netColor = net > 0 ? 'text-success' : net < 0 ? 'text-error' : 'text-foreground/40';
   const netPrefix = net > 0 ? '+' : '';
@@ -27,6 +30,12 @@ export function TopBar({ chips, handNumber, buyInAmount, onEndSession }: TopBarP
         </span>
       </div>
       <div className="flex items-center gap-3">
+        {user && (
+          <>
+            <BalanceDisplay balance={balance} loading={balanceLoading} size="sm" />
+            <span className="text-foreground/20">|</span>
+          </>
+        )}
         <span className="text-foreground/40 text-xs md:text-sm">
           Hand #{handNumber}
         </span>

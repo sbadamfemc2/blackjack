@@ -7,6 +7,11 @@ jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: null, signOut: jest.fn(), loading: false }),
 }));
 
+// Mock useBalance
+jest.mock('@/hooks/useBalance', () => ({
+  useBalance: () => ({ balance: null, loading: false, refresh: jest.fn() }),
+}));
+
 describe('TopBar', () => {
   it('shows chip count and hand number', () => {
     render(<TopBar chips={1500} handNumber={3} buyInAmount={1000} />);

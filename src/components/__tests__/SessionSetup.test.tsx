@@ -11,7 +11,12 @@ jest.mock('framer-motion', () => ({
     button: ({ children, whileTap, ...props }: React.ComponentProps<'button'> & { whileTap?: unknown }) => (
       <button {...props}>{children}</button>
     ),
+    span: ({ children, ...props }: React.ComponentProps<'span'>) => (
+      <span {...props}>{children}</span>
+    ),
   },
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useReducedMotion: () => false,
 }));
 
 // Mock next/link
@@ -26,6 +31,12 @@ jest.mock('next/link', () => ({
 const mockUseAuth = jest.fn(() => ({ user: null, signOut: jest.fn(), loading: false }));
 jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => mockUseAuth(),
+}));
+
+// Mock useBalance
+const mockUseBalance = jest.fn(() => ({ balance: null, loading: false, refresh: jest.fn() }));
+jest.mock('@/hooks/useBalance', () => ({
+  useBalance: () => mockUseBalance(),
 }));
 
 describe('SessionSetup', () => {
@@ -79,6 +90,7 @@ describe('SessionSetup', () => {
       signOut: jest.fn(),
       loading: false,
     });
+    mockUseBalance.mockReturnValue({ balance: 10000, loading: false, refresh: jest.fn() });
     rerender(<SessionSetup onStart={onStart} activeSession={null} onResume={onResume} />);
     expect(screen.getByText('View Stats')).toBeInTheDocument();
   });
