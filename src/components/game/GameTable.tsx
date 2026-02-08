@@ -34,8 +34,10 @@ export function GameTable() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [animateCards, setAnimateCards] = useState(false);
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
+  const [outcomeVisible, setOutcomeVisible] = useState(false);
   const prevPhaseRef = useRef<string | null>(null);
   const prevHandCountRef = useRef(0);
+  const prevPhaseForOutcomeRef = useRef<string>('');
 
   // Track when cards are newly dealt to trigger entry animations
   useEffect(() => {
@@ -54,6 +56,36 @@ export function GameTable() {
     }
     prevHandCountRef.current = currentHandCount;
   }, [state?.playerHands.length]);
+
+  // Delay outcome labels so the player can see the final card before the result
+  useEffect(() => {
+    if (!state) return;
+
+    if (state.phase === 'ROUND_OVER' && !isAnimating) {
+      const fromDealerPlay = prevPhaseForOutcomeRef.current === 'DEALER_PLAY';
+
+      let delayMs: number;
+      if (fromDealerPlay) {
+        // Dealer played — wait for dealer card animations + processing pause
+        const dealerCards = state.dealerHand.cards.length;
+        const lastCardAnimEnd = dealerCards > 2
+          ? (dealerCards - 1) * 150 + 400  // stagger delay + entry animation
+          : 500;                            // hole card flip only
+        delayMs = lastCardAnimEnd + 1000;
+      } else {
+        // Player bust/blackjack or instant resolution (e.g. dealer BJ)
+        delayMs = 1200;
+      }
+
+      const timer = setTimeout(() => setOutcomeVisible(true), delayMs);
+      return () => clearTimeout(timer);
+    }
+
+    if (state.phase !== 'ROUND_OVER') {
+      setOutcomeVisible(false);
+      prevPhaseForOutcomeRef.current = state.phase;
+    }
+  }, [state?.phase, isAnimating]);
 
   // Auto-progression: handle DEALER_PLAY automatically
   useEffect(() => {
@@ -190,6 +222,7 @@ export function GameTable() {
                 handsConfiguration={state.handsConfiguration}
                 onBetCircleClick={handleBetCircleClick}
                 animateEntry={animateCards}
+                outcomeVisible={outcomeVisible}
               />
             </div>
           </div>
